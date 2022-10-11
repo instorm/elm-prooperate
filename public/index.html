@@ -1,0 +1,247 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <script type="text/javascript" src="pjf/prooperate.js"></script>
+    <script type="text/javascript" src="pjf/websql.js"></script>
+    <script type="text/javascript" src="elm.js"></script>
+    <title>Demo</title>
+</head>
+<body>
+    <div id="body"></div>
+    <script>
+    var app = Elm.Main.init(
+        { node: document.getElementById("body") }
+    );      
+
+    /* Utils */
+    function uuid() {
+        var S4 = function () {
+            return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+        }
+        return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
+    }
+    function subscribe(obj, f) {
+        if ((ref$ = obj) != null) {
+            ref$.subscribe(f);
+        }
+    }
+    function send(obj, v) {
+        if ((ref$ = obj) != null) {
+            ref$.send(v);
+        }
+    }
+    function mifareArray(xs) {
+        var result = [];
+        for (var i=xs.length; i--;) {
+            a = xs[i];
+            result.unshift({
+                type: a.type_,
+                readData: a.services
+            });
+        }
+        return result;
+    }
+    function felicaArray(xs) {
+        var result = [];
+        for (var i=xs.length; i--;) {
+            a = xs[i];
+            result.unshift({
+                systemCode: a.systemCode,
+                useMasterIDm: a.useMasterIDm,
+                service: a.services
+            });
+        }
+        return result;
+    }
+    function elmConfigToJsConfig(config_) {
+        var config = {
+            successSound: config_.successSound,
+            failSound: config_.failSound,
+            successLamp: config_.successLamp,
+            failLamp: config_.failLamp,
+            waitLamp: config_.waitLamp,
+            felica: felicaArray(config_.felicaList),
+            mifare: mifareArray(config_.mifareList),
+            onetime: true,
+            typeB: config_.typeB,
+            onEvent: undefined
+        };
+        return config;
+    }
+
+    /* ProOperate.productType */
+    subscribe(app.ports.signalProductType, function () {
+        send(app.ports.slotProductType, ProOperate().productType);
+    });
+
+    /* ProOperate.terminalId */
+    subscribe(app.ports.signalTerminalId, function () {
+        send(app.ports.slotTerminalId, ProOperate().getTerminalID());
+    });
+
+    /* ProOperate.firmwareVersion */
+    subscribe(app.ports.signalFirmwareVersion, function () {
+        send(app.ports.slotFirmwareVersion, ProOperate().getFirmwareVersion());
+    });
+
+    /* ProOperate.contentsSetVersion */
+    subscribe(app.ports.signalContentsSetVersion, function () {
+        send(app.ports.slotContentsSetVersion, ProOperate().getContentsSetVersion());
+    });
+
+    /* ProOperate.Keypad.getKeypadDisplay */
+    subscribe(app.ports.signalGetKeypadDisplay, function () {
+        var ret = ProOperate().getKeypadDisplay();
+        var trio = undefined; 
+        if (typeof ret == 'object') {
+            trio = [ret.firstLine, ret.secondLine, 0];
+        }
+        else {
+            trio = ["", "", ret];
+        }
+        send(app.ports.slotGetKeypadDisplay, trio);
+    });
+
+    /* ProOperate.Keypad.setKeypadDisplay */
+    subscribe(app.ports.signalSetKeypadDisplay, function (a) {
+        var display = {
+            firstLine : a[0],
+            secondLine : a[1]
+        };
+        send(app.ports.slotSetKeypadDisplay, ProOperate().setKeypadDisplay(display));
+    });
+
+    /* ProOperate.Keypad.getUsbStatus */
+    subscribe(app.ports.signalKeypadConnected, function () {
+        send(app.ports.slotKeypadConnected, ProOperate().getKeypadConnected());
+    });
+
+    /* ProOperate.Sound.play */
+    subscribe(app.ports.signalPlaySound, function (path) {
+        var playPromise = new Promise((resolve, reject) => {
+            function event(eventCode) {
+                playPromise.then((value) => {
+                    send(app.ports.slotPlaySound, value);
+                });
+            };
+            var param = {
+                filePath : path,
+                loop : false,
+                onEvent : event
+            };
+            ret = ProOperate().playSound(param);
+            if (ret < 0) { 
+                send(app.ports.slotPlaySound, ret);
+            } else {
+                resolve(ret);
+            }
+        })
+    });
+    
+    /* ProOperate.Keypad.observe */
+    subscribe(app.ports.signalKeypadEvent, function () {
+        function onEvent(eventCode) {
+            send(app.ports.slotKeypadEvent, ["usb", eventCode])
+        }
+        function onKeyDown(eventCode) {
+            send(app.ports.slotKeypadEvent, ["keydown", eventCode])
+        }
+        function onKeyUp(eventCode) {
+            send(app.ports.slotKeypadEvent, ["keyup", eventCode])
+        }
+        var param = {
+            onKeyDown : onKeyDown,
+            onKeyUp : onKeyUp,
+            onEvent : onEvent
+        };
+        ProOperate().startKeypadListen(param);
+    });
+
+    /* ProOperate.Touch.observeOnce */
+    subscribe(app.ports.signalTouchResponseOnce_pro2, function (config_) {
+        var config = elmConfigToJsConfig(config_);
+        var touchPromise = new Promise((resolve, reject) => {
+            config.onEvent = done;
+            function done(eventCode, response) {
+                if (eventCode == 1) {
+                    resolve(response);
+                }
+                else {
+                    touchPromise.then(value => {
+                        send(app.ports.slotTouchResponse, value);
+                    });
+                }
+            }
+        });
+        ProOperate().startCommunication(config);
+    });
+
+    /* ProOperate.Touch.observe */
+    subscribe(app.ports.signalTouchResponseUntil_pro2, function (config_) {
+        var config = elmConfigToJsConfig(config_);
+        var touchPromise = new Promise((resolve) => {
+            config.onEvent = done;
+            config.onetime = false;
+            function done(eventCode, response) {
+                if (eventCode == 1) {
+                    resolve(response);
+                }
+                else {
+                    touchPromise.then(value => {
+                        send(app.ports.slotTouchResponse, value);
+                        touchPromise = new Promise((a) => { resolve = a; });
+                    });
+                }
+            }
+        });
+        ProOperate().startCommunication(config);
+    });
+    /*
+            WebSQL
+    */
+    DBHandles = {};
+
+    /* WebSQL.openDatabase */
+    subscribe(app.ports.signalOpenDatabase, function (params) {
+        var result = {};
+        try {
+            var db = openDatabase(params.name, params.version, params.desc, params.size);
+            var dbh = uuid(); 
+            console.log("open:"+dbh);
+            DBHandles[dbh] = db;
+            result['ok'] = dbh;
+        }
+        catch (e) {
+            result['err'] = e.message;
+        }
+        send(app.ports.slotOpenDatabase, result);
+    });
+
+    /* WebSQL.runSQL */
+    subscribe(app.ports.signalRunSQL, function (query) {
+        var dbh = query.dbh;
+        var db = DBHandles[dbh];
+        db.transaction(function (tx) {
+            var result = {};
+            function success(tx, rs) {
+                var rows = [];
+                for (var i=rs.rows.length; i--;) {
+                    rows.unshift(rs.rows.item(i));
+                }
+                result['ok'] = dbh;
+                result['rows'] = JSON.stringify(rows);
+                send(app.ports.slotRunSQL, result);
+            }
+            function error(e) {
+                result['err'] = JSON.stringify(e);
+                send(app.ports.slotRunSQL, result);
+            }
+            tx.executeSql(query.sql, query.params, success, error);
+        });
+    });
+
+    </script>
+</body>
+</html>
