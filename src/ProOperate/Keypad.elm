@@ -7,6 +7,7 @@ port module ProOperate.Keypad exposing
     , keyDown
     , keyUp
     , observe
+    , processKeyDown
     , setDisplay
     , updateDisplay
     , usb
@@ -87,6 +88,10 @@ toEvent ( key, value ) =
 
         _ ->
             Usb <| toUsbStatus value
+
+
+{-| -}
+port signalProcessKeyDown : Int -> Cmd msg
 
 
 {-| -}
@@ -252,6 +257,12 @@ append c s =
 keycodeToString : Int -> String
 keycodeToString =
     Char.fromCode >> String.fromChar
+
+
+{-| -}
+processKeyDown : KeyCode -> Procedure Never () msg
+processKeyDown keycode =
+    Procedure.do (signalProcessKeyDown keycode)
 
 
 {-| -}

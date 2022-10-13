@@ -90,6 +90,123 @@
     subscribe(app.ports.signalContentsSetVersion, function () {
         send(app.ports.slotContentsSetVersion, ProOperate().getContentsSetVersion());
     });
+    function swapLast(s, n) {
+        return (removeLast(s) + n);
+    }
+
+    function removeLast(s) {
+        return s.slice(0, -1);
+    }
+
+    function append(c, s) {
+        if (s.length < 16) {
+            s = s + c;
+        }
+        else {
+            s = swapLast(s, c);
+        }
+        return s;
+    }
+    function shiftLastChar(direc, s) {
+        charas =
+            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        last = s.slice(-1);
+        index = charas.indexOf(last);
+        if (index >= 0) {
+            switch (last) {
+                case "Z":
+                    if (direc > 0) {
+                        s = swapLast(s, "A");
+                    }
+                    else {
+                        s = swapLast(s, "Y");
+                    }
+                    break;
+                case "9":
+                    if (direc > 0) {
+                        s = swapLast(s, "0");
+                    }
+                    else {
+                        s = swapLast(s, "8");
+                    }
+                    break;
+                case "A":
+                    if (direc < 0) {
+                        s = swapLast(s, "Z");
+                    }
+                    else {
+                        s = swapLast(s, "B");
+                    }
+                    break;
+                case "0":
+                    if (direc < 0) {
+                        s = swapLast(s, "9");
+                    }
+                    else {
+                        s = swapLast(s, "1");
+                    }
+                    break;
+                default:
+                    s = swapLast(s, charas.slice(index+direc, index+direc+1));
+                    break;
+            }
+        }
+        return s;
+    }
+    /* ProOperate.Keypad.processKeyDown */
+    subscribe(app.ports.signalProcessKeyDown, function (keycode) {
+        if (keycode < 32) {
+            return;
+        }
+        var display = ProOperate().getKeypadDisplay();
+        var chr = String.fromCharCode(keycode);
+        var s = display.firstLine;
+        switch (keycode)  {
+            /* 00キー */
+            case 58:
+                s = shiftLastChar(-1, s);
+                break;
+            /* クリアキー */ 
+            case 106:
+                s = "";
+                break;
+            /* 次へキー */
+            case 107:
+                s = shiftLastChar(1, s);
+                break;
+            /* 戻るキー */
+            case 109:
+                s = removeLast(s);
+                break;
+
+            /* F1 */
+            case 112:
+                s = append("A", s);
+                break;
+
+            /* F2 */
+            case 113:
+                s = append("H", s);
+                break;
+
+            /* F3 */
+            case 114:
+                s = append("O", s);
+                berak;
+
+            /* F4 */
+            case 115:
+                s = append("V", s);
+                break;
+
+            /* DEFAULT */
+            default:
+                s = append(chr, s); 
+                break;
+        }
+        display.firstLine = s;
+        ProOperate().setKeypadDisplay(display);
+    });
 
     /* ProOperate.Keypad.getKeypadDisplay */
     subscribe(app.ports.signalGetKeypadDisplay, function () {
