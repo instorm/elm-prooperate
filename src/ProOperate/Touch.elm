@@ -4,6 +4,7 @@ port module ProOperate.Touch exposing (TouchResponse, observeOnce_pro2, observe_
 
 import Json.Decode as Json
 import Maybe exposing (Maybe)
+import ProOperate exposing (Error(..))
 import ProOperate.Config exposing (Config_pro2)
 import Procedure exposing (Procedure)
 import Procedure.Channel as Channel exposing (Channel)
@@ -32,7 +33,7 @@ type alias TouchResponse =
     }
 
 
-jsonToTouchResponse : Json.Value -> Maybe TouchResponse
+jsonToTouchResponse : Json.Value -> Result Error TouchResponse
 jsonToTouchResponse json =
     let
         decoder =
@@ -45,22 +46,26 @@ jsonToTouchResponse json =
     in
     json
         |> Json.decodeValue decoder
-        |> Result.Extra.unwrap Nothing Just
+        |> Result.mapError (Json.errorToString >> DecodeError)
 
 
 {-| -}
-observeOnce_pro2 : Config_pro2 -> Procedure e (Maybe TouchResponse) msg
+observeOnce_pro2 : Config_pro2 -> Procedure Error TouchResponse msg
 observeOnce_pro2 config =
     Channel.open (\_ -> signalTouchResponseOnce_pro2 config)
         |> Channel.connect slotTouchResponse
         |> Channel.acceptOne
         |> Procedure.map jsonToTouchResponse
+        |> Procedure.map Result.Extra.toTask
+        |> Procedure.andThen Procedure.fromTask
 
 
 {-| -}
-observe_pro2 : Config_pro2 -> Procedure e (Maybe TouchResponse) msg
+observe_pro2 : Config_pro2 -> Procedure Error TouchResponse msg
 observe_pro2 config =
     Channel.open (\_ -> signalTouchResponseUntil_pro2 config)
         |> Channel.connect slotTouchResponse
         |> Channel.accept
         |> Procedure.map jsonToTouchResponse
+        |> Procedure.map Result.Extra.toTask
+        |> Procedure.andThen Procedure.fromTask

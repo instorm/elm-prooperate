@@ -1,5 +1,6 @@
 port module ProOperate exposing
-    ( contentsSetVersion
+    ( Error(..)
+    , contentsSetVersion
     , firmwareVersion
     , productType
     , terminalId
@@ -20,6 +21,19 @@ port module ProOperate exposing
 
 import Procedure exposing (Procedure)
 import Procedure.Channel as Channel exposing (Channel)
+
+
+{-| -}
+type Error
+    = DecodeError String
+    | ApiError_ ApiError
+
+
+{-| -}
+type alias ApiError =
+    { sender : String
+    , message : String
+    }
 
 
 
