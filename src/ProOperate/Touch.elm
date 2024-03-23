@@ -20,14 +20,15 @@ port signalTouchResponseUntil_pro2 : Config_pro2 -> Cmd msg
 
 
 {-| -}
-port slotTouchResponse : (Json.Value -> msg) -> Sub msg
+port signalStopTouchResponse : () -> Cmd msg
 
 
 {-| -}
-port signalStopTouchResponse : () -> Sub msg
-
-
 port slotStopTouchResponse : (Int -> msg) -> Sub msg
+
+
+{-| -}
+port slotTouchResponse : (Json.Value -> msg) -> Sub msg
 
 
 {-| -}
