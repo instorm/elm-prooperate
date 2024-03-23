@@ -24,6 +24,13 @@ port slotTouchResponse : (Json.Value -> msg) -> Sub msg
 
 
 {-| -}
+port signalStopTouchResponse : () -> Sub msg
+
+
+port slotStopTouchResponse : (Int -> msg) -> Sub msg
+
+
+{-| -}
 type alias TouchResponse =
     { category : Int
     , paramResult : Maybe Int
@@ -69,3 +76,11 @@ observe_pro2 config =
         |> Procedure.map jsonToTouchResponse
         |> Procedure.map Result.Extra.toTask
         |> Procedure.andThen Procedure.fromTask
+
+
+{-| -}
+stopObserve : Procedure Error Int msg
+stopObserve =
+    Channel.open (\_ -> signalStopTouchResponse ())
+        |> Channel.connect slotTouchResponse
+        |> Channel.acceptOne
