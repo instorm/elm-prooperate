@@ -1,4 +1,4 @@
-port module ProOperate.Touch exposing (TouchResponse, observeOnce_pro2, observe_pro2, stopObserve)
+port module ProOperate.Touch exposing (TouchResponse, observeOnce_pro2, observe_pro2, resumeObserve, stopObserve)
 
 {-| -}
 
@@ -25,6 +25,14 @@ port signalStopTouchResponse : () -> Cmd msg
 
 {-| -}
 port slotStopTouchResponse : (Int -> msg) -> Sub msg
+
+
+{-| -}
+port signalResumeTouchResponse : () -> Cmd msg
+
+
+{-| -}
+port slotResumeTouchResponse : (Int -> msg) -> Sub msg
 
 
 {-| -}
@@ -84,4 +92,12 @@ stopObserve : Procedure Error Int msg
 stopObserve =
     Channel.open (\_ -> signalStopTouchResponse ())
         |> Channel.connect slotStopTouchResponse
+        |> Channel.acceptOne
+
+
+{-| -}
+resumeObserve : Procedure Error Int msg
+resumeObserve =
+    Channel.open (\_ -> signalResumeTouchResponse ())
+        |> Channel.connect slotResumeTouchResponse
         |> Channel.acceptOne
