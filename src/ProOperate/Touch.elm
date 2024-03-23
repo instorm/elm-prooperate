@@ -1,4 +1,4 @@
-port module ProOperate.Touch exposing (TouchResponse, observeOnce_pro2, observe_pro2)
+port module ProOperate.Touch exposing (TouchResponse, observeOnce_pro2, observe_pro2, stopObserve)
 
 {-| -}
 
@@ -83,5 +83,5 @@ observe_pro2 config =
 stopObserve : Procedure Error Int msg
 stopObserve =
     Channel.open (\_ -> signalStopTouchResponse ())
-        |> Channel.connect slotTouchResponse
+        |> Channel.connect slotStopTouchResponse
         |> Channel.acceptOne
