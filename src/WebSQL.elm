@@ -127,5 +127,4 @@ decode : Json.Decoder a -> String -> Procedure Error a msg
 decode decoder encoded =
     Json.decodeString decoder encoded
         |> Result.mapError (DecodeError << Json.errorToString)
-        |> Result.Extra.toTask
-        |> Procedure.fromTask
+        |> Result.Extra.unpack Procedure.break Procedure.provide
