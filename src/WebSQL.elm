@@ -82,8 +82,7 @@ jsonToProcedure json =
         |> Json.decodeValue decoder
         |> Result.mapError (Json.errorToString >> DecodeError)
         |> Result.andThen portResultToResult
-        |> Result.Extra.toTask
-        |> Procedure.fromTask
+        |> Result.Extra.unpack Procedure.break Procedure.provide
 
 
 {-| -}
